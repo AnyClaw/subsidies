@@ -2,6 +2,7 @@ package ru.practice.subsidies.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.web.bind.annotation.*;
+import ru.practice.subsidies.dto.request.SelectRequest;
 
 // TODO: переписать методы в соответствии со спецификацией
 
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1")
 public interface SubsidiesController {
 
-    @GetMapping("/select")
+    @PostMapping("/select")
     @Operation(
             summary = "Проверка права пассажира на субсидию",
             description = """
@@ -17,7 +18,9 @@ public interface SubsidiesController {
                     субсидированному тарифу, и возвращает актуальные балансы квот.
                     """
     )
-    String select();
+    String select(
+            @RequestBody SelectRequest selectRequest
+    );
 
     @PostMapping("/insert")
     @Operation(
