@@ -3,7 +3,10 @@ package ru.practice.subsidies.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.web.bind.annotation.*;
 import ru.practice.subsidies.dto.request.SelectRequest;
+import ru.practice.subsidies.dto.response.FlightDto;
 import ru.practice.subsidies.dto.response.SelectResponse;
+
+import java.util.List;
 
 // TODO: переписать методы в соответствии со спецификацией
 
@@ -61,4 +64,11 @@ public interface SubsidiesController {
                     """
     )
     String delete();
+
+    @GetMapping("/flights")
+    @Operation(
+            summary = "Получение рейсов",
+            description = "Метод для получения всех субсидируемых рейсов"
+    )
+    List<FlightDto> getFlights();
 }

@@ -5,8 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practice.subsidies.controller.SubsidiesController;
 import ru.practice.subsidies.dto.request.SelectRequest;
+import ru.practice.subsidies.dto.response.FlightDto;
 import ru.practice.subsidies.dto.response.SelectResponse;
 import ru.practice.subsidies.service.SubsidiesService;
+
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -39,5 +42,10 @@ public class SubsidiesControllerDemo implements SubsidiesController {
     @Override
     public String delete() {
         return "delete";
+    }
+
+    @Override
+    public List<FlightDto> getFlights() {
+        return subsidiesService.getFlights();
     }
 }
