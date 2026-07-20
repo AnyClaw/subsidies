@@ -14,29 +14,23 @@ $$ LANGUAGE plpgsql;
 
 CREATE TABLE locations (
                            location_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                           code VARCHAR(10) NOT NULL UNIQUE,
+                           code VARCHAR(10) NOT NULL,
                            name TEXT NOT NULL,
 
                            CONSTRAINT uq_locations_code UNIQUE (code)
 );
 
 COMMENT ON TABLE locations IS 'Все пункты отправления/назначения.';
-CREATE INDEX idx_locations_code ON locations(code);
 
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE settings (
                           key VARCHAR(100) PRIMARY KEY,
                           value TEXT NOT NULL,
-                          description TEXT,
                           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+insert into settings (key,value) values ('moroshka_limit','4');
 COMMENT ON TABLE settings IS 'Глобальные константы: лимиты, коэффициенты.';
-
-CREATE TRIGGER trg_settings_updated
-    BEFORE UPDATE ON settings
-    FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 
 -- ---------------------------------------------------------------------------
 
@@ -50,94 +44,49 @@ CREATE TABLE price_scale (
                              CONSTRAINT chk_price_scale_price_positive CHECK (base_price_kopecks > 0)
 );
 
-COMMENT ON TABLE price_scale IS 'Государственная шкала цен. Потолок = base_price × 1.25 (Арктика).';
-CREATE INDEX idx_price_scale_km ON price_scale(km_from, km_to);
-
--- ---------------------------------------------------------------------------
-
-CREATE TABLE segments (
-                          segment_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                          from_loc_id INT NOT NULL,
-                          to_loc_id INT NOT NULL,
-                          distance_km INT NOT NULL,
-                          aircraft_type VARCHAR(20) NOT NULL,
-
-                          CONSTRAINT fk_segments_from_location FOREIGN KEY (from_loc_id)
-                              REFERENCES locations(location_id) ON DELETE RESTRICT,
-                          CONSTRAINT fk_segments_to_location FOREIGN KEY (to_loc_id)
-                              REFERENCES locations(location_id) ON DELETE RESTRICT,
-                          CONSTRAINT uq_segments_route UNIQUE (from_loc_id, to_loc_id, aircraft_type),
-                          CONSTRAINT chk_segments_distance_positive CHECK (distance_km > 0),
-                          CONSTRAINT chk_segments_aircraft_type CHECK (aircraft_type IN ('plane', 'helicopter')),
-                          CONSTRAINT chk_segments_different_locations CHECK (from_loc_id <> to_loc_id)
-);
-
-COMMENT ON TABLE segments IS 'Части перелёта, частично на них привязаны тарифы Морошки.';
-CREATE INDEX idx_segments_from ON segments(from_loc_id);
-CREATE INDEX idx_segments_to ON segments(to_loc_id);
-
+COMMENT ON TABLE price_scale IS 'Государственная шкала цен';
+create index idx_price_scale_km on price_scale(km_from,km_to);
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE routes (
                         route_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                        program VARCHAR(20) NOT NULL,
                         depart_loc_id INT NOT NULL,
                         arrive_loc_id INT NOT NULL,
                         distance_km INT,
-                        max_price_fed_kopecks BIGINT,
-                        is_bidirectional BOOLEAN NOT NULL DEFAULT TRUE,
+                        aircraft_type VARCHAR(20) not null,
+                        max_price_fed_kopecks BIGINT not null,
 
                         CONSTRAINT fk_routes_depart_location FOREIGN KEY (depart_loc_id)
                             REFERENCES locations(location_id) ON DELETE RESTRICT,
                         CONSTRAINT fk_routes_arrive_location FOREIGN KEY (arrive_loc_id)
                             REFERENCES locations(location_id) ON DELETE RESTRICT,
-                        CONSTRAINT chk_routes_program CHECK (program IN ('FEDERAL', 'MOROSHKA')),
-                        CONSTRAINT chk_routes_different_endpoints CHECK (depart_loc_id <> arrive_loc_id)
+                        CONSTRAINT chk_routes_different_endpoints CHECK (depart_loc_id <> arrive_loc_id),
+                        constraint chk_routes_aircraft_type check (aircraft_type in ('plane','helicopter'))
 );
 
-COMMENT ON TABLE routes IS 'Коммерческие направления. Для FEDERAL — с потолком. Для MOROSHKA — собирается из сегментов или на бэке? вопрос здесь';
-CREATE INDEX idx_routes_program ON routes(program);
+COMMENT ON TABLE routes IS 'Все направления';
 CREATE INDEX idx_routes_endpoints ON routes(depart_loc_id, arrive_loc_id);
-
--- ---------------------------------------------------------------------------
-
-CREATE TABLE route_segments (
-                                route_id INT NOT NULL,
-                                segment_id INT NOT NULL,
-                                leg_order INT NOT NULL,
-
-                                PRIMARY KEY (route_id, segment_id),
-                                UNIQUE (route_id, leg_order),
-
-                                CONSTRAINT fk_route_segments_route FOREIGN KEY (route_id)
-                                    REFERENCES routes(route_id) ON DELETE CASCADE,
-                                CONSTRAINT fk_route_segments_segment FOREIGN KEY (segment_id)
-                                    REFERENCES segments(segment_id) ON DELETE RESTRICT
-);
-
-CREATE INDEX idx_route_segments_route_order ON route_segments(route_id, leg_order);
-COMMENT ON TABLE route_segments IS 'Маршрут-цепочка = упорядоченный список сегментов.';
 
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE moroshka_tariffs (
                                   moroshka_tariff_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                  segment_id INT NOT NULL,
+                                  route_id INT NOT NULL,
                                   adult_base_price_kopecks BIGINT NOT NULL,
                                   adult_card_price_kopecks BIGINT NOT NULL,
                                   valid_from DATE NOT NULL DEFAULT CURRENT_DATE,
                                   valid_to DATE,
 
-                                  CONSTRAINT fk_moroshka_tariffs_segment FOREIGN KEY (segment_id)
-                                      REFERENCES segments(segment_id) ON DELETE RESTRICT,
+                                  constraint fk_moroshka_tariffs_route foreign key (route_id)
+                                      references routes(route_id) on delete restrict,
                                   CONSTRAINT chk_moroshka_tariffs_base_positive CHECK (adult_base_price_kopecks > 0),
                                   CONSTRAINT chk_moroshka_tariffs_card_positive CHECK (adult_card_price_kopecks > 0),
                                   CONSTRAINT chk_moroshka_tariffs_base_gte_card CHECK (adult_base_price_kopecks >= adult_card_price_kopecks),
                                   CONSTRAINT chk_moroshka_tariffs_valid_period CHECK (valid_to IS NULL OR valid_to >= valid_from)
 );
 
-COMMENT ON TABLE moroshka_tariffs IS 'Тарифы Морошки по сегментам. Детский (50%) и багаж (1%) считаются в бэке.';
-CREATE INDEX idx_moroshka_tariffs_segment ON moroshka_tariffs(segment_id, valid_from DESC);
+COMMENT ON TABLE moroshka_tariffs IS 'Тарифы Детский (50%) и багаж (1%) считаются в бэке.';
+CREATE INDEX idx_moroshka_tariffs_routes ON moroshka_tariffs(route_id, valid_from DESC);
 
 -- ---------------------------------------------------------------------------
 
@@ -160,8 +109,6 @@ CREATE TABLE flights (
 
 COMMENT ON TABLE flights IS 'Конкретные вылеты: дата, время, остаток мест.';
 CREATE INDEX idx_flights_route_date ON flights(route_id, flight_date);
-CREATE INDEX idx_flights_date ON flights(flight_date);
-CREATE INDEX idx_flights_number ON flights(flight_number);
 
 -- ---------------------------------------------------------------------------
 
@@ -178,8 +125,7 @@ CREATE TABLE residents (
                            CONSTRAINT uq_residents_document UNIQUE (document_type, document_number)
 );
 
-COMMENT ON TABLE residents IS 'Реестр жителей ЯНАО с картой «Морошка».';
-CREATE INDEX idx_residents_doc ON residents(document_type, document_number);
+COMMENT ON TABLE residents IS 'Реестр жителей ЯНАО.';
 CREATE INDEX idx_residents_name ON residents(last_name, first_name, middle_name);
 
 -- ---------------------------------------------------------------------------
@@ -188,7 +134,7 @@ CREATE TABLE quota_balances (
                                 quota_balanc_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                                 resident_id INT NOT NULL,
                                 year INT NOT NULL,
-                                available INT NOT NULL DEFAULT 6,
+                                available INT NOT NULL DEFAULT 4,
                                 issued INT NOT NULL DEFAULT 0,
                                 refunded INT NOT NULL DEFAULT 0,
                                 used  INT NOT NULL DEFAULT 0,
@@ -196,15 +142,13 @@ CREATE TABLE quota_balances (
                                 CONSTRAINT fk_quota_balances_resident FOREIGN KEY (resident_id)
                                     REFERENCES residents(resident_id) ON DELETE CASCADE,
                                 CONSTRAINT uq_quota_balances_resident_year UNIQUE (resident_id, year),
-                                CONSTRAINT chk_quota_balances_year_valid CHECK (year >= 2020),
-    CONSTRAINT chk_quota_balances_available_non_negative CHECK (available >= 0),
-    CONSTRAINT chk_quota_balances_issued_non_negative CHECK (issued >= 0),
-    CONSTRAINT chk_quota_balances_refunded_non_negative CHECK (refunded >= 0),
-    CONSTRAINT chk_quota_balances_used_non_negative CHECK (used >= 0)
+                                CONSTRAINT chk_quota_balances_available_non_negative CHECK (available >= 0),
+                                CONSTRAINT chk_quota_balances_issued_non_negative CHECK (issued >= 0),
+                                CONSTRAINT chk_quota_balances_refunded_non_negative CHECK (refunded >= 0),
+                                CONSTRAINT chk_quota_balances_used_non_negative CHECK (used >= 0)
 );
 
 COMMENT ON TABLE quota_balances IS 'Баланс лимитов Морошки по годам. Остаток = available - issued + refunded.';
-CREATE INDEX idx_quota_resident_year ON quota_balances(resident_id, year);
 
 -- ---------------------------------------------------------------------------
 
@@ -229,8 +173,6 @@ CREATE TABLE tickets (
 COMMENT ON TABLE tickets IS 'Билеты. Цена в КОПЕЙКАХ.';
 CREATE INDEX idx_tickets_flight ON tickets(flight_id);
 CREATE INDEX idx_tickets_status ON tickets(status);
-CREATE INDEX idx_tickets_number ON tickets(ticket_number);
-
 CREATE TRIGGER trg_tickets_updated
     BEFORE UPDATE ON tickets
     FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
