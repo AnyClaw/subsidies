@@ -1,5 +1,5 @@
 package ru.practice.subsidies.enums;
 
-public enum SubsidyCategory {
+public enum SubsidyProgram {
     FEDERAL, MOROSHKA
 }

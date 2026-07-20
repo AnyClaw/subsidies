@@ -5,12 +5,13 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.practice.subsidies.enums.SubsidyProgram;
 
 @Table(name = "routes")
 @Entity
 @Data
 @AllArgsConstructor
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Route {
 
     @Id
@@ -18,7 +19,8 @@ public class Route {
     @Column(name = "route_id")
     private Integer id;
 
-    private String program;
+    @Enumerated(EnumType.STRING)
+    private SubsidyProgram program;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "depart_loc_id")
