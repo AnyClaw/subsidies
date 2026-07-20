@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.practice.subsidies.dto.request.SelectRequest;
 import ru.practice.subsidies.dto.response.ConfirmationInfoDto;
+import ru.practice.subsidies.dto.response.FlightDto;
 import ru.practice.subsidies.dto.response.QuotaBalanceDto;
 import ru.practice.subsidies.dto.response.SelectResponse;
 import ru.practice.subsidies.entity.Flight;
@@ -14,6 +15,7 @@ import ru.practice.subsidies.repository.FlightRepository;
 import ru.practice.subsidies.repository.QuotaBalanceRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -92,5 +94,25 @@ public class SubsidiesService {
                                 .build()
                 )
                 .build();
+    }
+
+    public List<FlightDto> getFlights() {
+        return flightRepository.findAll().stream()
+                .map(
+                        flight -> FlightDto.builder()
+                                .id(flight.getId())
+                                .flightNumber(flight.getFlightNumber())
+                                .departureLocation(flight.getRoute().getDepartureLocation().getCode())
+                                .arrivalLocation(flight.getRoute().getDepartureLocation().getCode())
+                                .flightDate(flight.getFlightDate())
+                                .departureTime(flight.getDepartureTime())
+                                .arrivalTime(flight.getArrivalTime())
+                                .totalSeats(flight.getTotalSeats())
+                                .availableSeats(flight.getAvailableSeats())
+                                .distanceKm(flight.getRoute().getDistanceKm())
+                                .maxPriceFedKopecks(flight.getRoute().getMaxPriceFedKopecks())
+                                .build()
+                )
+                .toList();
     }
 }
