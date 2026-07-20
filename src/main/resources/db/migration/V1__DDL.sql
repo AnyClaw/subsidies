@@ -91,11 +91,11 @@ CREATE TABLE routes (
                             REFERENCES locations(location_id) ON DELETE RESTRICT,
                         CONSTRAINT fk_routes_arrive_location FOREIGN KEY (arrive_loc_id)
                             REFERENCES locations(location_id) ON DELETE RESTRICT,
-                        CONSTRAINT chk_routes_program CHECK (program IN ('fed', 'moroshka')),
+                        CONSTRAINT chk_routes_program CHECK (program IN ('FEDERAL', 'MOROSHKA')),
                         CONSTRAINT chk_routes_different_endpoints CHECK (depart_loc_id <> arrive_loc_id)
 );
 
-COMMENT ON TABLE routes IS 'Коммерческие направления. Для fed — с потолком. Для moroshka — собирается из сегментов или на бэке? вопрос здесь';
+COMMENT ON TABLE routes IS 'Коммерческие направления. Для FEDERAL — с потолком. Для MOROSHKA — собирается из сегментов или на бэке? вопрос здесь';
 CREATE INDEX idx_routes_program ON routes(program);
 CREATE INDEX idx_routes_endpoints ON routes(depart_loc_id, arrive_loc_id);
 
