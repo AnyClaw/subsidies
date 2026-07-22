@@ -20,4 +20,6 @@ public interface ResidentRepository extends JpaRepository<Resident, Integer> {
         AND r.documentNumber = :#{#resident.documentNumber}
         """)
     Optional<Resident> findByResidentDto(@Param("resident") ResidentDto resident);
+
+    Boolean existsByDocumentTypeAndDocumentNumber(String documentType, String documentNumber);
 }

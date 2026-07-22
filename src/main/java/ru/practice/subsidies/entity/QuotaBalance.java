@@ -27,4 +27,24 @@ public class QuotaBalance {
     private Integer issued;
     private Integer refunded;
     private Integer used;
+
+    public Integer getRemaining() {
+        return available - issued + refunded;
+    }
+
+    public void minusAvailable() { available--; }
+
+    public void plusAvailable() { available++; }
+
+    public void minusIssued() { issued--; }
+
+    public void plusIssued() { issued++; }
+
+    public void minusRefunded() { refunded--; }
+
+    public void plusRefunded() { refunded++; }
+
+    public void plusUsed() { used++; }
+
+    public void  minusUsed() { used--; }
 }

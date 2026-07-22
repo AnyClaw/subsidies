@@ -165,9 +165,9 @@ CREATE TABLE tickets (
                          CONSTRAINT fk_tickets_flight FOREIGN KEY (flight_id)
                              REFERENCES flights(flight_id) ON DELETE RESTRICT,
                          CONSTRAINT uq_tickets_number UNIQUE (ticket_number),
-                         CONSTRAINT chk_tickets_fare_type CHECK (fare_type IN ('regular', 'moroshka')),
+                         CONSTRAINT chk_tickets_fare_type CHECK (fare_type IN ('FEDERAL', 'MOROSHKA')),
                          CONSTRAINT chk_tickets_price_non_negative CHECK (total_price_kopecks >= 0),
-                         CONSTRAINT chk_tickets_status CHECK (status IN ('issued', 'refunded', 'cancelled', 'flown'))
+                         CONSTRAINT chk_tickets_status CHECK (status IN ('ISSUED', 'REFUNDED', 'CANCELLED', 'USED'))
 );
 
 COMMENT ON TABLE tickets IS 'Билеты. Цена в КОПЕЙКАХ.';
@@ -188,7 +188,6 @@ CREATE TABLE passengers (
                             middle_name TEXT,
                             birthdate DATE NOT NULL,
                             category VARCHAR(20) NOT NULL,
-                            parent_passenger_id INT,
                             document_type VARCHAR(10) NOT NULL,
                             document_number VARCHAR(20) NOT NULL,
 
@@ -196,20 +195,13 @@ CREATE TABLE passengers (
                                 REFERENCES tickets(ticket_id) ON DELETE CASCADE,
                             CONSTRAINT fk_passengers_resident FOREIGN KEY (resident_id)
                                 REFERENCES residents(resident_id) ON DELETE RESTRICT,
-                            CONSTRAINT fk_passengers_parent FOREIGN KEY (parent_passenger_id)
-                                REFERENCES passengers(passenger_id) ON DELETE SET NULL,
-                            CONSTRAINT chk_passengers_category CHECK (category IN ('adult', 'child_2_12', 'infant_no_seat', 'infant_with_seat')),
-                            CONSTRAINT chk_passengers_infant_has_parent CHECK (
-                                (category = 'infant_no_seat' AND parent_passenger_id IS NOT NULL) OR
-                                (category <> 'infant_no_seat')
-                                )
+                            CONSTRAINT chk_passengers_category CHECK (category IN ('ADULT', 'CHILD_2_12'))
 );
 
 COMMENT ON TABLE passengers IS 'Пассажиры в билете. Младенцы связаны с родителем через parent_passenger_id.';
 CREATE INDEX idx_passengers_ticket ON passengers(ticket_id);
 CREATE INDEX idx_passengers_resident ON passengers(resident_id);
 CREATE INDEX idx_passengers_doc ON passengers(document_type, document_number);
-CREATE INDEX idx_passengers_parent ON passengers(parent_passenger_id) WHERE parent_passenger_id IS NOT NULL;
 
 -- ---------------------------------------------------------------------------
 
@@ -223,7 +215,7 @@ CREATE TABLE ticket_operations (
                                    CONSTRAINT fk_operations_ticket FOREIGN KEY (ticket_id)
                                        REFERENCES tickets(ticket_id) ON DELETE CASCADE,
                                    CONSTRAINT chk_operations_type CHECK (
-                                       operation_type IN ('create', 'refund', 'cancel', 'edit', 'exchange', 'use')
+                                       operation_type IN ('ISSUED', 'REFUNDED', 'USED')
                                        )
 );
 

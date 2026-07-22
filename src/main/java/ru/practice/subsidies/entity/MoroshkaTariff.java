@@ -5,28 +5,27 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.practice.subsidies.enums.SubsidyProgram;
 
-@Table(name = "routes")
+import java.time.LocalDate;
+
+@Table(name = "moroshka_tariffs")
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Route {
+public class MoroshkaTariff {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "route_id")
+    @Column(name = "moroshka_tariff_id")
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "depart_loc_id")
-    private Location departureLocation;
+    @JoinColumn(name = "route_id")
+    private Route route;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "arrive_loc_id")
-    private Location arrivalLocation;
-
-    private Integer distanceKm;
-    private Integer maxPriceFedKopecks;
+    private Integer adultBasePriceKopecks;
+    private Integer adultCardPriceKopecks;
+    private LocalDate validFrom;
+    private LocalDate validTo;
 }
